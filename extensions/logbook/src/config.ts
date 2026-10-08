@@ -12,6 +12,8 @@ const DEFAULTS = {
   screenIndex: 0,
   maxWidth: 1440,
   retentionDays: 14,
+  learningEnabled: false,
+  learningIntervalMinutes: 60,
 } as const;
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
@@ -40,6 +42,13 @@ export function resolveLogbookConfig(raw: unknown) {
     maxWidth: clampNumber(value.maxWidth, DEFAULTS.maxWidth, 480, 3840),
     visionModel: normalizeOptionalString(value.visionModel),
     retentionDays: clampNumber(value.retentionDays, DEFAULTS.retentionDays, 1, 365),
+    learningEnabled: value.learningEnabled === true,
+    learningIntervalMinutes: clampNumber(
+      value.learningIntervalMinutes,
+      DEFAULTS.learningIntervalMinutes,
+      15,
+      240,
+    ),
   };
 }
 
