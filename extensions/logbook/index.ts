@@ -201,6 +201,22 @@ export default definePluginEntry({
       api.registerGatewayMethod(method, handle(run), { scope: "operator.write" });
 
     // Process-wide service health does not read or mutate a user's durable profile/session state.
+    // Learning is observational only: it can read the logbook output and finished agent turns,
+    // but it does not register or invoke any task-execution tool.
+    api.on("agent_end", async (event) => {
+      try {
+        await service?.recordAgentTurn(event.messages);
+      } catch (error) {
+        // Learning must never interfere with or fail a normal agent turn.
+        api.logger.warn?.(`logbook learning: failed to record agent evidence: ${String(error)}`);
+      }
+    });
+
+    api.on("before_prompt_build", async () => {
+      const context = service?.learningContext();
+      return context ? { appendSystemContext: context } : undefined;
+    });
+
     api.registerGatewayMethod(
       "logbook.status",
       handle(() => requireService().status()),
