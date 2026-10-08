@@ -14,6 +14,7 @@ const DEFAULTS = {
   retentionDays: 14,
   learningEnabled: false,
   learningIntervalMinutes: 60,
+  learningRawEvidenceRetentionDays: 7,
 } as const;
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
@@ -48,6 +49,12 @@ export function resolveLogbookConfig(raw: unknown) {
       DEFAULTS.learningIntervalMinutes,
       15,
       240,
+    ),
+    learningRawEvidenceRetentionDays: clampNumber(
+      value.learningRawEvidenceRetentionDays,
+      DEFAULTS.learningRawEvidenceRetentionDays,
+      1,
+      14,
     ),
   };
 }
