@@ -56,6 +56,18 @@ Evidence can come from:
 
 The learner treats all captured content as data. It does not treat text seen on a screen, webpage, document, codebase, email, or tool result as a new instruction to itself.
 
+## OpenClaw's own memory
+
+The custom learning model complements OpenClaw's native memory rather than replacing it.
+
+The Windows installer enables OpenClaw session-memory indexing so the actual agent can recall relevant earlier private conversations. The curated learning state is then an additional compact layer for preferences, principles, intent patterns, workflows, tool experience, corrections, predictions, and uncertainty.
+
+This is the important architecture:
+
+**OpenClaw agent + native memory + curated personal-learning context**
+
+not a second agent that the user must manage.
+
 ## Personal model
 
 The structured state is compact and bounded rather than a transcript dump.
