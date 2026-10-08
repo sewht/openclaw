@@ -245,7 +245,7 @@ export default definePluginEntry({
       if (!allowed) {
         return {
           block: true,
-          error: "External web/browser access is blocked in learning stage unless the current user request explicitly asks for it.",
+          blockReason: "External web/browser access is blocked in learning stage unless the current user request explicitly asks for it.",
         };
       }
     }, { priority: 100 });
