@@ -199,10 +199,13 @@ try {
 Require-Command "openclaw"
 
 Write-Step "Configure the personal learning environment"
-if (-not $SkipOnboarding) {
+$ConfigPath = Join-Path $Root "state\openclaw.json"
+if (-not $SkipOnboarding -and -not (Test-Path -LiteralPath $ConfigPath)) {
   Write-Host "OpenClaw onboarding is interactive. Complete provider/model setup in the wizard."
   Write-Host "This installer does not create or guess API keys."
   Invoke-OpenClaw @("onboard", "--install-daemon")
+} elseif (Test-Path -LiteralPath $ConfigPath) {
+  Write-Host "Existing OpenClaw config found at $ConfigPath; onboarding will not overwrite it."
 }
 
 # These writes use OpenClaw's own validated config writer; they do not replace openclaw.json.
@@ -236,16 +239,32 @@ Invoke-OpenClaw @("gateway", "status", "--json")
 Write-Step "Check the Logbook runtime"
 Invoke-OpenClaw @("plugins", "inspect", "logbook", "--runtime", "--json")
 
+if (-not $SkipWindowsHub) {
+  Write-Step "Install the Windows Hub companion"
+  $arch = $env:PROCESSOR_ARCHITECTURE
+  if ($env:PROCESSOR_ARCHITEW6432) { $arch = $env:PROCESSOR_ARCHITEW6432 }
+  $asset = if ($arch -eq "ARM64") { "OpenClawCompanion-Setup-arm64.exe" } else { "OpenClawCompanion-Setup-x64.exe" }
+  $hubUrl = "https://github.com/openclaw/openclaw/releases/latest/download/" + $asset
+  $hubInstaller = Join-Path $Root "temp\$asset"
+  Write-Host "Downloading official Windows Hub asset: $asset"
+  Invoke-WebRequest -Uri $hubUrl -OutFile $hubInstaller
+  Start-Process -FilePath $hubInstaller -Wait
+  Remove-Item -LiteralPath $hubInstaller -Force -ErrorAction SilentlyContinue
+}
+
 Write-Step "Open your direct OpenClaw chat"
 Invoke-OpenClaw @("dashboard")
 
 Write-Host ""
 Write-Host "INSTALLATION COMPLETE FOR THE SOURCE CHECKOUT." -ForegroundColor Green
 Write-Host ""
-Write-Host "IMPORTANT: screen learning needs a screen-capable Windows node." -ForegroundColor Yellow
-Write-Host "Recommended Windows path: install/launch OpenClaw Companion and connect it to this existing local Gateway, then enable Node mode and approve the node surface."
-Write-Host "Do NOT create a second Gateway in the Companion setup."
+Write-Host "NEXT ONE-TIME WINDOWS STEP:" -ForegroundColor Yellow
+Write-Host "In OpenClaw Companion, choose Connections and connect to the EXISTING local Gateway created by this installer. Do not create another Gateway."
+Write-Host "Then enable Windows Node mode. When the Gateway shows a pending node request, approve it with:"
+Write-Host "  openclaw nodes pending"
+Write-Host "  openclaw nodes approve <requestId>"
+Write-Host "After that, the Logbook learning service can receive screen.snapshot evidence from this laptop."
 Write-Host ""
-Write-Host "Alternative advanced path: use the bundled Windows CUA node with 'openclaw plugins enable cua-computer' and 'openclaw node run' from the interactive desktop session, then approve the node pairing surface."
+Write-Host "Chat is already available at the OpenClaw Control UI opened above. Responses there come directly from OpenClaw's configured model, not through ChatGPT."
 Write-Host ""
 Write-Host "The agent you chat with in the dashboard is OpenClaw itself. The learning layer only supplies accumulated personal context."
