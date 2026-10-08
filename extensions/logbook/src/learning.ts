@@ -102,7 +102,6 @@ const EMPTY_STATE: LearningState = {
 const MAX_ITEMS = 60;
 const MAX_AGENT_EVIDENCE = 18000;
 const MAX_CONTEXT = 7000;
-const DEFAULT_RAW_RETENTION_DAYS = 7;
 const GAP_THRESHOLD_MS = 2 * 60 * 1000;
 
 function text(value: unknown, max = 1200): string {
