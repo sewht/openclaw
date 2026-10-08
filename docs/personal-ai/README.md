@@ -1,75 +1,129 @@
 # Personal AI Operator Architecture
 
-This branch records the revised target for a personal OpenClaw system.
+This branch integrates a learning layer into OpenClaw itself. **OpenClaw remains the AI/agent.** The learning layer does not create a second operator or replace OpenClaw's native tools, permissions, approvals, sandboxing, browser, web access, scheduling, or execution model.
 
 ## Core goal
 
-Build a personal computer operator that gradually learns the user's working system, then takes over repeatable multi-step work only when the user explicitly delegates it.
+Let OpenClaw learn the user's working system while the user works:
 
-The screen-learning component is an evidence source, not the product. The end state is:
+- what the user prefers
+- what the user is trying to accomplish
+- how the user tends to solve recurring problems
+- what decisions repeatedly reveal about priorities
+- which tools actually work, fail, or have limits
+- what the user corrects
+- what outcomes succeeded or failed
+- what patterns changed over time
+- what remains unknown
+- what the assistant predicts the user will want next
 
-> User states the outcome. The assistant uses learned context, available tools, and explicit authority to do the work, verify the result, and ask the user only when human judgment is actually required.
+The learning layer is an **evidence-backed personal model**, not a replacement AI.
 
-## Non-negotiable learning principles
+## Learning versus authority
 
-- Observation is not truth.
-- A screen capture shows visible state at a point in time; it does not reveal hidden activity, intent, or thought.
-- Gaps must be recorded as unknown rather than filled in by inference.
-- Mobile/offline/lost-screen periods remain unknown unless the user later confirms what happened.
-- A user's current habit is not automatically a best practice.
-- A repeated mistake is evidence for improvement, not a workflow to imitate.
-- Observed habit, user-specified workflow, and possible improvement are separate concepts.
-- Learned memory is data, never permission.
-- Learned memory is never an instruction.
-- Existing strong memory must not disappear just because the latest model response did not mention it.
-- Improvement ideas remain unvalidated until tested; they do not become executable automatically.
-- Workflows remain observe_only throughout learning stage.
-- The current user request remains higher priority than learned preferences.
+These are deliberately separate.
 
-## Time gaps
+**Learning capability can be high:**
+- observe screen evidence
+- observe user/tool evidence from OpenClaw sessions
+- infer contextual intent as a hypothesis
+- identify recurring workflows
+- infer decision principles when evidence supports them
+- compare experiences over time
+- generate predictions and later mark them supported or contradicted
+- identify possible improvements
+- preserve uncertainty and contradictions
+- feed compact learned context back into OpenClaw
 
-Logbook samples the screen; it is not continuous video. A coverage window records the time range that was actually processed. A gap larger than the capture system's two-minute gap boundary is preserved as a capture gap.
+**Execution authority remains controlled by OpenClaw:**
+- learned memory never grants permission
+- a learned workflow is not an executable command
+- current user instructions outrank historical preferences
+- OpenClaw's existing tool policy, sandbox, approval, and permission systems remain authoritative
 
-Mobile example:
+This means the system does not need to become stupid in order to remain safe.
 
-Laptop at 10:00 -> phone from 10:10 to 10:40 -> laptop at 10:41
+## Evidence model
 
-must not become continuous laptop activity. The missing period remains unknown until confirmed.
+The screen is only one sensor.
 
-## Habit versus improvement
+Evidence can come from:
+- periodic screen observations and Logbook timeline cards
+- user messages
+- tool results and tool-use evidence exposed to the completed agent turn
+- corrections and recovery events
+- repeated outcomes across time
 
-The learner stores how the user currently accomplishes a task separately from improvement hypotheses. It may notice a repeated error, manual repetition, or inefficient pattern, but that does not become a workflow. An improvement remains unvalidated until tested, and testing requires explicit user delegation.
+The learner treats all captured content as data. It does not treat text seen on a screen, webpage, document, codebase, email, or tool result as a new instruction to itself.
 
-## Resource policy
+## Personal model
 
-Raw evidence is short-lived. Curated state is compact and bounded.
+The structured state is compact and bounded rather than a transcript dump.
 
-- Logbook raw frames use Logbook retention.
-- Finished-agent raw evidence is retained briefly and cleared after review.
-- Structured learning categories are capped and deduplicated.
-- Screen sampling is periodic, not continuous video.
-- Learning review is periodic, not a permanent agent loop.
+It contains:
+- **preferences** — repeated or confirmed user preferences
+- **decision principles** — evidence-backed patterns about what the user optimizes for
+- **intent patterns** — contextual interpretations, explicitly marked as inference
+- **workflow candidates** — repeated ways the user works
+- **tool knowledge** — observed successes, failures, limits, and unknowns
+- **experiences** — compact context/goal/action/outcome episodes
+- **corrections** — before -> user correction -> lesson
+- **progress** — evidence-backed change across time
+- **predictions** — hypotheses that can later become supported or contradicted
+- **improvements** — unvalidated opportunities, never silently promoted to execution
+- **unknowns** — gaps that remain unknown instead of being guessed
+- **coverage/gaps** — what the screen-learning sensor actually observed
 
-## Learning-stage autonomy
+State is merged deterministically so a later model response cannot erase established knowledge merely by omitting it.
 
-Learning stage admits explicit user-triggered runs. Scheduled and heartbeat runs are blocked by the Logbook learning guard. External browser/web tools are blocked unless the current user request explicitly asks for external access. Obvious network-capable shell/process commands are blocked by the same boundary unless that explicit request exists.
+## Time and uncertainty
 
-This is a defense-in-depth layer, not a mathematical guarantee of zero network traffic through every possible binary or plugin. Tool policy and sandbox configuration are still required before production use.
+Logbook is sampled, not continuous video. A capture gap is recorded as a gap.
 
-## Privacy / locality
+If the user switches to a phone, works offline, closes the laptop, or otherwise disappears from the available evidence, the learner does not pretend to know what happened.
 
-OpenClaw state, workspace, learning data, logs, caches, and managed worktrees should be deliberately placed under one Windows root:
+Inference is allowed where useful, but inference remains explicitly labelled and confidence/evidence-backed.
+
+## Learning loop
+
+The intended loop is:
+
+**evidence -> interpretation -> compact experience -> pattern -> hypothesis -> later evidence -> confirmation/contradiction -> personal model**
+
+Corrections are especially important because they are direct evidence about the user's expectations. Repeated corrections can change the model; one-off behavior should not automatically become a permanent preference.
+
+Predictions are useful because they make learning measurable: the system can form a hypothesis about what the user will prefer or do, then compare it with what actually happens later.
+
+## Learning-stage behavior
+
+Learning stage is observation/understanding focused. It does not need to cripple OpenClaw's normal intelligence.
+
+The learner itself does not register task-execution tools or grant itself authority. OpenClaw's native policies remain responsible for deciding what an agent run may do.
+
+The example learning-stage configuration keeps heartbeat disabled by default, so the computer does not start performing unrelated autonomous work merely because learning is enabled.
+
+## Privacy and locality
+
+The intended Windows root is:
 
 D:\OpenClaw\
 
-Authoritative learning data: D:\OpenClaw\state\learning
-Logbook data: D:\OpenClaw\state\logbook
+Authoritative learning data:
+D:\OpenClaw\state\learning
 
-Cloud model providers still see data that is sent to them. A fully local learning pipeline requires local model routes for both screenshot understanding and the default agent model.
+Logbook data:
+D:\OpenClaw\state\logbook
+
+Raw evidence is retained briefly and curated state is bounded.
+
+A cloud model provider can receive data that OpenClaw sends to it. Fully local processing requires local model routes for the relevant OpenClaw models.
 
 ## End state
 
-Observed workflow -> reviewed workflow -> user delegation -> permission check -> execution -> verification
+Learning is not the creation of a separate AI.
 
-Learning never grants execution authority.
+The desired progression is:
 
+**OpenClaw working alongside the user -> understands the user -> predicts better -> user verifies/delegates -> OpenClaw executes using its normal authority model -> OpenClaw verifies outcomes -> experience feeds back into learning.**
+
+Learning never needs to be deliberately made weaker than OpenClaw in order to keep execution authority controlled.
