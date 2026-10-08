@@ -14,7 +14,6 @@ import {
 import { resolveLogbookConfig } from "./src/config.js";
 import { dayKeyFor } from "./src/day.js";
 import { LogbookService } from "./src/service.js";
-
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const logbookConfigSchema = {
@@ -39,6 +38,7 @@ function readNumberParam(params: unknown, key: string): number {
   }
   return value;
 }
+
 
 const logbookNodeHostCommands: OpenClawPluginNodeHostCommand[] = [
   {
@@ -153,6 +153,7 @@ export default definePluginEntry({
           logger: ctx.logger,
           scheduler: ctx.scheduler,
           dataDir: path.join(ctx.stateDir, "logbook"),
+          learningDataDir: path.join(ctx.stateDir, "learning"),
           workerModuleUrl: new URL(
             `./src/store.worker${path.extname(api.runtimeSource)}`,
             pathToFileURL(api.runtimeSource),
@@ -200,7 +201,25 @@ export default definePluginEntry({
     const registerWrite = (method: string, run: (params: unknown) => unknown) =>
       api.registerGatewayMethod(method, handle(run), { scope: "operator.write" });
 
-    // Process-wide service health does not read or mutate a user's durable profile/session state.
+    // Learning observes OpenClaw sessions; it does not replace OpenClaw's native
+    // tool policy, sandbox, approval, or permission model. Learning capability and
+    // execution authority are intentionally separate.
+    api.on("before_prompt_build", async (_event, _ctx) => {
+      const context = service?.learningContext();
+      return context ? { appendSystemContext: context } : undefined;
+    });
+
+    // Learning is observational only: it can read logbook evidence and finished agent turns,
+    // but it does not register or invoke task-execution tools.
+    api.on("agent_end", async (event, _ctx) => {
+      try {
+        await service?.recordAgentTurn(event.messages);
+      } catch (error) {
+        // Learning must never interfere with or fail a normal agent turn.
+        api.logger.warn?.("logbook learning: failed to record agent evidence: " + String(error));
+      }
+    });
+
     api.registerGatewayMethod(
       "logbook.status",
       handle(() => requireService().status()),

@@ -1,0 +1,41 @@
+// Example only. Review the active OpenClaw configuration before applying.
+// Intentionally learning-stage, not production/autonomous mode.
+{
+  agents: {
+    defaults: {
+      workspace: "D:\\OpenClaw\\workspace",
+      heartbeat: { every: "0m" },
+    },
+  },
+
+  worktreeRoot: "D:\\OpenClaw\\worktrees",
+
+  logging: {
+    file: "D:\\OpenClaw\\logs\\openclaw.log",
+    maxFileBytes: 52428800,
+  },
+
+  skills: {
+    workshop: {
+      autonomous: { mode: "off" },
+      approvalPolicy: "pending",
+    },
+  },
+
+  plugins: {
+    entries: {
+      logbook: {
+        enabled: true,
+        config: {
+          captureEnabled: true,
+          captureIntervalSeconds: 30,
+          analysisIntervalMinutes: 15,
+          retentionDays: 14,
+          learningEnabled: true,
+          learningIntervalMinutes: 60,
+          learningRawEvidenceRetentionDays: 7,
+        },
+      },
+    },
+  },
+}

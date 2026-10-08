@@ -1,0 +1,60 @@
+name: Personal AI Learning Check
+
+on:
+  push:
+    branches:
+      - learning-stage-observer
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "extensions/logbook/**"
+      - "docs/personal-ai/**"
+      - "scripts/windows/**"
+      - ".github/workflows/personal-ai-learning-check.yml"
+
+concurrency:
+  group: personal-ai-learning-check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Build + learning tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Verify pnpm
+        run: |
+          test "$(pnpm --version)" = "12.5.1"
+          node --version
+          pnpm --version
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Build Control UI
+        run: pnpm ui:build
+
+      - name: Learning tests
+        run: pnpm exec vitest run extensions/logbook/src/learning.test.ts
+
+      - name: Validate plugin manifest
+        run: node -e "JSON.parse(require('fs').readFileSync('extensions/logbook/openclaw.plugin.json','utf8')); console.log('logbook manifest JSON valid')"
