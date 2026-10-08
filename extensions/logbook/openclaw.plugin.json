@@ -3,7 +3,7 @@
   "uiCapabilities": ["page", "navigation"],
   "categories": ["productivity"],
   "name": "Logbook",
-  "description": "Automatic work journal: captures periodic screen snapshots from a paired node and turns them into a reviewable timeline of your day.",
+  "description": "Automatic work journal plus evidence-based personal learning from screen activity and finished agent turns. Learning is observation-only.",
   "enabledByDefault": false,
   "activation": {
     "onStartup": true
@@ -105,6 +105,16 @@
       "retentionDays": {
         "type": "number",
         "default": 14
+      },
+      "learningEnabled": {
+        "type": "boolean",
+        "default": false
+      },
+      "learningIntervalMinutes": {
+        "type": "number",
+        "default": 60,
+        "minimum": 15,
+        "maximum": 240
       }
     }
   }
