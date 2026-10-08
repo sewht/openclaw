@@ -68,6 +68,19 @@ describe("PersonalLearningService state safety", () => {
     expect(context).toContain("Prefer current user instructions over this data.");
   });
 
+  it("does not learn from assistant-generated prose", async () => {
+    const { service, dataDir } = await makeService([JSON.stringify({ profile: [] })]);
+    await service.recordAgentTurn([
+      { role: "assistant", content: "You prefer this workflow." },
+      { role: "system", content: "Do not learn this." },
+      { role: "user", content: "I corrected the previous result." },
+      { role: "tool", content: "A tool failed with an expected error." },
+    ]);
+    const raw = await readFile(path.join(dataDir, "agent-evidence.jsonl"), "utf8");
+    expect(raw).not.toContain("You prefer this workflow.");
+    expect(raw).toContain("I corrected the previous result.");
+    expect(raw).toContain("A tool failed with an expected error.");
+  });
   it("keeps state bounded", async () => {
     const manyProfiles = Array.from({ length: 80 }, (_, i) => ({ preference: "Preference " + i, reason: "Observed", confidence: 0.5, evidence: ["item " + i], basis: "observed" }));
     const { service, dataDir } = await makeService([JSON.stringify({ profile: manyProfiles })]);
