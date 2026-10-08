@@ -1,7 +1,12 @@
 {
   "id": "logbook",
-  "uiCapabilities": ["page", "navigation"],
-  "categories": ["productivity"],
+  "uiCapabilities": [
+    "page",
+    "navigation"
+  ],
+  "categories": [
+    "productivity"
+  ],
   "name": "Logbook",
   "description": "Automatic work journal plus evidence-based personal learning from screen activity and finished agent turns. Learning is observation-only.",
   "enabledByDefault": false,
@@ -44,6 +49,15 @@
       "label": "Frame Retention (days)",
       "help": "Snapshots older than this are deleted. Timeline cards are kept.",
       "advanced": true
+    },
+    "learningEnabled": {
+      "label": "Personal Learning",
+      "help": "Builds an evidence-backed profile of preferences, workflows, corrections, tool behavior, progress, and unknowns. It never executes user tasks."
+    },
+    "learningIntervalMinutes": {
+      "label": "Agent Learning Review (min)",
+      "help": "How often queued finished-agent-turn evidence is reviewed for corrections and reusable patterns.",
+      "advanced": true
     }
   },
   "configGroups": [
@@ -63,13 +77,27 @@
       "id": "activity-analysis",
       "title": "Activity analysis",
       "order": 20,
-      "properties": ["analysisIntervalMinutes", "visionModel"]
+      "properties": [
+        "analysisIntervalMinutes",
+        "visionModel"
+      ]
     },
     {
       "id": "retention",
       "title": "Retention",
       "order": 30,
-      "properties": ["retentionDays"]
+      "properties": [
+        "retentionDays"
+      ]
+    },
+    {
+      "id": "personal-learning",
+      "title": "Personal learning (observation only)",
+      "order": 40,
+      "properties": [
+        "learningEnabled",
+        "learningIntervalMinutes"
+      ]
     }
   ],
   "configSchema": {
