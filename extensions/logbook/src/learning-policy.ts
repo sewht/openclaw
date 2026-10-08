@@ -1,5 +1,5 @@
 const EXTERNAL_TARGET_PATTERN =
-  /\b(web|internet|online|website|site|google|bing|duckduckgo|x(?:\.com| search)?)\b/i;
+  /\b(web|internet|online|website|site|google|bing|duckduckgo|twitter|x\.com|x\s+search)\b/i;
 const EXTERNAL_VERB_PATTERN =
   /\b(search|look\s+up|browse|visit|open|fetch|check|access|go\s+to)\b/i;
 const DIRECT_URL_PATTERN = /https?:\/\//i;
