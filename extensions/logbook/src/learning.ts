@@ -79,7 +79,7 @@ type LearningState = {
     prediction: string;
     confidence: number;
     evidence: string[];
-    status: "unvalidated";
+    status: "unvalidated" | "supported" | "contradicted";
   }>;
   unknowns: Array<{
     topic: string;
@@ -106,12 +106,6 @@ type LearningState = {
     endMs: number;
     reason: "capture_gap" | "not_observed";
   }>;
-};
-
-type LearningConfig = {
-  learningEnabled: boolean;
-  learningIntervalMinutes: number;
-  learningRawEvidenceRetentionDays: number;
 };
 
 type LearningConfig = {
@@ -292,7 +286,10 @@ function normalize(value: unknown): LearningState {
         prediction: text(row.prediction),
         confidence: confidence(row.confidence),
         evidence: list(row.evidence),
-        status: "unvalidated" as const,
+        status:
+          row.status === "supported" || row.status === "contradicted"
+            ? row.status
+            : "unvalidated" as const,
       };
     }).filter((row) => row.context && row.prediction).slice(0, MAX_ITEMS),
 
@@ -528,7 +525,10 @@ function mergeLearningState(previous: LearningState, incoming: LearningState): L
         ...old,
         confidence: Math.max(old.confidence, row.confidence),
         evidence: mergeTextList(old.evidence, row.evidence, 12),
-        status: "unvalidated",
+        status:
+        row.status === "supported" || row.status === "contradicted"
+          ? row.status
+          : "unvalidated",
       };
     }
   }
@@ -1169,6 +1169,10 @@ export class PersonalLearningService {
       writeFile(path.join(this.dir, "corrections.md"), renderCorrections(this.state), { mode: 0o600 }),
       writeFile(path.join(this.dir, "progress.md"), renderProgress(this.state), { mode: 0o600 }),
       writeFile(path.join(this.dir, "unknowns.md"), renderUnknowns(this.state), { mode: 0o600 }),
+      writeFile(path.join(this.dir, "principles.md"), renderPrinciples(this.state), { mode: 0o600 }),
+      writeFile(path.join(this.dir, "intent-patterns.md"), renderIntentPatterns(this.state), { mode: 0o600 }),
+      writeFile(path.join(this.dir, "experiences.md"), renderExperiences(this.state), { mode: 0o600 }),
+      writeFile(path.join(this.dir, "predictions.md"), renderPredictions(this.state), { mode: 0o600 }),
     ]);
   }
 }
