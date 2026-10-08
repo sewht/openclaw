@@ -108,13 +108,13 @@ export class LogbookService {
     this.starting = this.trackOperation(async () => {
       const store = await LogbookStore.open(this.deps.dataDir, this.deps.workerModuleUrl);
       this.store = store;
-      this.learning = new PersonalLearningService(this.config, {
-        dataDir: this.deps.dataDir,
-        runtime: this.deps.runtime,
-        logger: this.deps.logger,
-      });
-      await this.learning.start();
       try {
+        this.learning = new PersonalLearningService(this.config, {
+          dataDir: this.deps.dataDir,
+          runtime: this.deps.runtime,
+          logger: this.deps.logger,
+        });
+        await this.learning.start();
         if (this.deps.scheduler.signal.aborted) {
           return;
         }
@@ -131,11 +131,15 @@ export class LogbookService {
           ["capture", this.config.captureIntervalSeconds * 1000, () => this.captureTick()],
           ["analysis", ANALYSIS_TICK_MS, () => this.analysisTick()],
           ["prune", PRUNE_TICK_MS, () => this.prune()],
-          [
-            "learning-review",
-            this.config.learningIntervalMinutes * 60 * 1000,
-            () => this.learning?.reviewPendingAgentEvidence(),
-          ],
+          ...(this.config.learningEnabled
+            ? [
+                [
+                  "learning-review",
+                  this.config.learningIntervalMinutes * 60 * 1000,
+                  () => this.learning?.reviewPendingAgentEvidence(),
+                ],
+              ]
+            : []),
         ] as const) {
           this.deps.scheduler.schedule({ id, delayMs: everyMs, everyMs, run });
         }
@@ -143,6 +147,7 @@ export class LogbookService {
           `logbook: started (capture every ${this.config.captureIntervalSeconds}s, analysis window ${this.config.analysisIntervalMinutes}m, data ${this.deps.dataDir})`,
         );
       } catch (error) {
+        this.learning = null;
         this.store = null;
         await store.close();
         throw error;
