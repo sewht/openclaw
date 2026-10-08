@@ -160,6 +160,7 @@ export default definePluginEntry({
           logger: ctx.logger,
           scheduler: ctx.scheduler,
           dataDir: path.join(ctx.stateDir, "logbook"),
+          learningDataDir: path.join(ctx.stateDir, "learning"),
           workerModuleUrl: new URL(
             `./src/store.worker${path.extname(api.runtimeSource)}`,
             pathToFileURL(api.runtimeSource),
