@@ -16,6 +16,7 @@ import {
   validateCardCoverage,
 } from "./analyze.js";
 import { parseModelRef, type LogbookConfig } from "./config.js";
+import { PersonalLearningService } from "./learning.js";
 import { dayKeyFor } from "./day.js";
 import {
   buildAskPrompt,
@@ -86,6 +87,7 @@ export class LogbookService {
   // Nodes whose captures failed this rotation; skipped until every candidate
   // has failed once, then retried so transient outages self-heal.
   private failedNodeIds = new Set<string>();
+  private learning: PersonalLearningService | null = null;
 
   constructor(
     private readonly config: LogbookConfig,
@@ -106,6 +108,12 @@ export class LogbookService {
     this.starting = this.trackOperation(async () => {
       const store = await LogbookStore.open(this.deps.dataDir, this.deps.workerModuleUrl);
       this.store = store;
+      this.learning = new PersonalLearningService(this.config, {
+        dataDir: this.deps.dataDir,
+        runtime: this.deps.runtime,
+        logger: this.deps.logger,
+      });
+      await this.learning.start();
       try {
         if (this.deps.scheduler.signal.aborted) {
           return;
@@ -123,6 +131,11 @@ export class LogbookService {
           ["capture", this.config.captureIntervalSeconds * 1000, () => this.captureTick()],
           ["analysis", ANALYSIS_TICK_MS, () => this.analysisTick()],
           ["prune", PRUNE_TICK_MS, () => this.prune()],
+          [
+            "learning-review",
+            this.config.learningIntervalMinutes * 60 * 1000,
+            () => this.learning?.reviewPendingAgentEvidence(),
+          ],
         ] as const) {
           this.deps.scheduler.schedule({ id, delayMs: everyMs, everyMs, run });
         }
@@ -148,6 +161,9 @@ export class LogbookService {
       async () => {
         const store = this.store;
         this.store = null;
+        const learning = this.learning;
+        this.learning = null;
+        await learning?.stop();
         await store?.close();
       },
     );
@@ -493,6 +509,18 @@ export class LogbookService {
       }
       await store.replaceObservations(batch.id, batch.day, segments);
       await this.reviseCards(store, batch);
+      if (this.learning) {
+        await this.learning.observeWindow({
+          day: batch.day,
+          startMs: batch.startMs,
+          endMs: batch.endMs,
+          observations: await store.observationsInRange(batch.day, batch.startMs, batch.endMs),
+          cards: await store.cardsForDay(batch.day, {
+            startMs: batch.startMs,
+            endMs: batch.endMs,
+          }),
+        });
+      }
       await store.setBatchStatus(batch.id, "done");
     } catch (err) {
       const message = coerceErrorMessage(err);
@@ -628,6 +656,14 @@ export class LogbookService {
     });
   }
 
+  async recordAgentTurn(messages: unknown[] | undefined): Promise<void> {
+    await this.learning?.recordAgentTurn(messages);
+  }
+
+  learningContext(): string | undefined {
+    return this.learning?.contextForPrompt();
+  }
+
   async timelineForDay(day: string): ReturnType<LogbookStore["timelineForDay"]> {
     const store = this.requireStore();
     return this.trackOperation(() => store.timelineForDay(day));
@@ -680,6 +716,7 @@ export class LogbookService {
         today,
         todayCards: await store.countCardsForDay(today),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        learning: this.learning?.status(),
       };
     });
   }
