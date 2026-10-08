@@ -131,17 +131,17 @@ export class LogbookService {
           ["capture", this.config.captureIntervalSeconds * 1000, () => this.captureTick()],
           ["analysis", ANALYSIS_TICK_MS, () => this.analysisTick()],
           ["prune", PRUNE_TICK_MS, () => this.prune()],
-          ...(this.config.learningEnabled
-            ? [
-                [
-                  "learning-review",
-                  this.config.learningIntervalMinutes * 60 * 1000,
-                  () => this.learning?.reviewPendingAgentEvidence(),
-                ],
-              ]
-            : []),
         ] as const) {
           this.deps.scheduler.schedule({ id, delayMs: everyMs, everyMs, run });
+        }
+        if (this.config.learningEnabled) {
+          const everyMs = this.config.learningIntervalMinutes * 60 * 1000;
+          this.deps.scheduler.schedule({
+            id: "learning-review",
+            delayMs: everyMs,
+            everyMs,
+            run: () => this.learning?.reviewPendingAgentEvidence(),
+          });
         }
         this.deps.logger.info(
           `logbook: started (capture every ${this.config.captureIntervalSeconds}s, analysis window ${this.config.analysisIntervalMinutes}m, data ${this.deps.dataDir})`,
