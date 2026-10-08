@@ -208,6 +208,12 @@ if (-not $SkipOnboarding) {
 # These writes use OpenClaw's own validated config writer; they do not replace openclaw.json.
 Invoke-OpenClaw @("config", "set", "agents.defaults.heartbeat.every", "0m")
 
+# Use OpenClaw's own memory/session indexing so the actual agent can recall
+# earlier conversations in addition to the curated Logbook learning context.
+Invoke-OpenClaw @("config", "set", "agents.defaults.memorySearch.experimental.sessionMemory", "true")
+Invoke-OpenClaw @("config", "set", "agents.defaults.memorySearch.sources", '["memory","sessions"]', "--strict-json", "--merge")
+Invoke-OpenClaw @("config", "set", "tools.sessions.visibility", "agent")
+
 Invoke-OpenClaw @("plugins", "enable", "codex")
 Invoke-OpenClaw @("plugins", "enable", "logbook")
 
