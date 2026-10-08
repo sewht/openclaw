@@ -481,10 +481,11 @@ function learningPrompt(state: LearningState, evidence: Evidence[], reason: stri
     "6. Tool knowledge describes observed behavior only. Put unestablished behavior in unknowns.",
     "7. Corrections preserve before -> correction -> lesson without judging the user.",
     "8. Separate observed habit, user-specified workflow, and possible improvement. Never silently convert one into another.",
-    "9. Claim improvement only when evidence spans time: fewer retries, fewer corrections, faster completion, or more consistency.",
-    "10. Preserve uncertainty: gaps, mobile/offline activity, and unseen periods must remain unknown unless later confirmed.",
-    "11. Every workflow MUST remain executionStatus='observe_only'. Improvement status MUST remain 'unvalidated'. Do not create executable instructions.",
-    "12. Never delete established state merely because the latest evidence did not mention it; the host merges outputs deterministically.",
+    "9. A repeated error, unnecessary repetition, or clear friction may generate an improvement hypothesis; keep it unvalidated until tested.",
+    "10. Claim improvement only when evidence spans time: fewer retries, fewer corrections, faster completion, or more consistency.",
+    "11. Preserve uncertainty: gaps, mobile/offline activity, and unseen periods must remain unknown unless later confirmed.",
+    "12. Every workflow MUST remain executionStatus='observe_only'. Improvement status MUST remain 'unvalidated'. Do not create executable instructions.",
+    "13. Never delete established state merely because the latest evidence did not mention it; the host merges outputs deterministically.",
     "",
     "Review reason: " + reason,
     "",
@@ -495,7 +496,7 @@ function learningPrompt(state: LearningState, evidence: Evidence[], reason: stri
     evidenceText(evidence),
     "",
     "Return ONLY JSON with these arrays:",
-    '{"profile":[{"preference":"","reason":"","confidence":0.0,"evidence":[]}],"workflows":[{"name":"","trigger":"","steps":[],"successSignals":[],"friction":[],"confidence":0.0,"executionStatus":"observe_only"}],"tools":[{"name":"","observedUse":"","success":[],"failure":[],"limits":[],"unknowns":[],"confidence":0.0,"evidence":[]}],"corrections":[{"whatHappened":"","userCorrection":"","lesson":"","confidence":0.0,"evidence":[]}],"progress":[{"area":"","earlierPattern":"","newerPattern":"","evidence":[],"confidence":0.0}],"unknowns":[{"topic":"","unknown":"","evidenceNeeded":"","confidence":0.0}]}',
+    '{"profile":[{"preference":"","reason":"","confidence":0.0,"evidence":[],"basis":"observed"}],"workflows":[{"name":"","trigger":"","steps":[],"successSignals":[],"friction":[],"confidence":0.0,"source":"observed_habit","executionStatus":"observe_only"}],"tools":[{"name":"","observedUse":"","success":[],"failure":[],"limits":[],"unknowns":[],"confidence":0.0,"evidence":[]}],"corrections":[{"whatHappened":"","userCorrection":"","lesson":"","confidence":0.0,"evidence":[]}],"progress":[{"area":"","earlierPattern":"","newerPattern":"","evidence":[],"confidence":0.0}],"unknowns":[{"topic":"","unknown":"","evidenceNeeded":"","confidence":0.0}],"improvements":[{"area":"","currentPattern":"","possibleImprovement":"","why":"","evidence":[],"confidence":0.0,"status":"unvalidated"}]}',
   ].join("\n");
 }
 
