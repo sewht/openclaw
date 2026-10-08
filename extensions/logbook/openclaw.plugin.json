@@ -58,6 +58,11 @@
       "label": "Agent Learning Review (min)",
       "help": "How often queued finished-agent-turn evidence is reviewed for corrections and reusable patterns.",
       "advanced": true
+    },
+    "learningRawEvidenceRetentionDays": {
+      "label": "Raw Agent Evidence Retention (days)",
+      "help": "Short-lived raw finished-turn evidence retention. Curated learning remains after raw evidence is cleared.",
+      "advanced": true
     }
   },
   "configGroups": [
@@ -96,7 +101,8 @@
       "order": 40,
       "properties": [
         "learningEnabled",
-        "learningIntervalMinutes"
+        "learningIntervalMinutes",
+        "learningRawEvidenceRetentionDays"
       ]
     }
   ],
@@ -143,6 +149,12 @@
         "default": 60,
         "minimum": 15,
         "maximum": 240
+      },
+      "learningRawEvidenceRetentionDays": {
+        "type": "number",
+        "default": 7,
+        "minimum": 1,
+        "maximum": 14
       }
     }
   }
