@@ -677,6 +677,7 @@ export class PersonalLearningService {
   private initialized = false;
   private reviewRunning = false;
   private lastAgentReviewAt = 0;
+  private mutationChain: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly config: LearningConfig,
@@ -757,25 +758,29 @@ export class PersonalLearningService {
       });
     }
     if (!evidence.length) return;
-    const previousEnd = this.state.coverage.length
-      ? this.state.coverage[this.state.coverage.length - 1].endMs
-      : undefined;
-    await this.applyEvidence(evidence, "screen_window");
-    this.state.coverage.push({
-      startMs: params.startMs,
-      endMs: params.endMs,
-      observedCount: params.observations.length,
-    });
-    if (previousEnd !== undefined && params.startMs - previousEnd > GAP_THRESHOLD_MS) {
-      this.state.gaps.push({
-        startMs: previousEnd,
-        endMs: params.startMs,
-        reason: "capture_gap",
-      });
-    }
-    this.state.coverage = this.state.coverage.slice(-MAX_ITEMS);
-    this.state.gaps = this.state.gaps.slice(-MAX_ITEMS);
-    await this.persist();
+    await this.applyEvidence(
+      evidence,
+      "screen_window",
+      (state) => {
+        const previousEnd = state.coverage.length
+          ? state.coverage[state.coverage.length - 1].endMs
+          : undefined;
+        state.coverage.push({
+          startMs: params.startMs,
+          endMs: params.endMs,
+          observedCount: params.observations.length,
+        });
+        if (previousEnd !== undefined && params.startMs - previousEnd > GAP_THRESHOLD_MS) {
+          state.gaps.push({
+            startMs: previousEnd,
+            endMs: params.startMs,
+            reason: "capture_gap",
+          });
+        }
+        state.coverage = state.coverage.slice(-MAX_ITEMS);
+        state.gaps = state.gaps.slice(-MAX_ITEMS);
+      },
+    );
     await writeFile(
       path.join(this.dailyDir, params.day + ".md"),
       "# Learning Activity — " + params.day + "\n\nProcessed evidence items: " +
@@ -863,24 +868,37 @@ export class PersonalLearningService {
     };
   }
 
-  private async applyEvidence(evidence: Evidence[], reason: "screen_window" | "agent_review"): Promise<void> {
-    try {
-      const result = await this.deps.runtime.llm.complete({
-        messages: [{ role: "user", content: learningPrompt(this.state, evidence, reason) }],
-        purpose: "logbook.learning." + reason,
-        maxTokens: 6000,
-      });
-      const parsed = jsonObject(result.text);
-      if (!parsed) {
-        this.deps.logger.warn("logbook learning: model returned non-JSON output");
-        return;
+  private async applyEvidence(
+    evidence: Evidence[],
+    reason: "screen_window" | "agent_review",
+    finalize?: (state: LearningState) => void,
+  ): Promise<void> {
+    const work = async () => {
+      try {
+        const result = await this.deps.runtime.llm.complete({
+          messages: [{ role: "user", content: learningPrompt(this.state, evidence, reason) }],
+          purpose: "logbook.learning." + reason,
+          maxTokens: 6000,
+        });
+        const parsed = jsonObject(result.text);
+        if (!parsed) {
+          this.deps.logger.warn("logbook learning: model returned non-JSON output");
+          return;
+        }
+        const incoming = normalize(parsed);
+        this.state = mergeLearningState(this.state, incoming);
+        finalize?.(this.state);
+        await this.persist();
+      } catch (error) {
+        this.deps.logger.warn("logbook learning: review failed: " + String(error));
       }
-      const incoming = normalize(parsed);
-      this.state = mergeLearningState(this.state, incoming);
-      await this.persist();
-    } catch (error) {
-      this.deps.logger.warn("logbook learning: review failed: " + String(error));
-    }
+    };
+    const next = this.mutationChain.then(work, work);
+    this.mutationChain = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    await next;
   }
 
   private async persist(): Promise<void> {
