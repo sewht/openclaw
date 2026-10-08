@@ -619,6 +619,23 @@ function renderUnknowns(state: LearningState): string {
   return lines.join("\n");
 }
 
+function renderCoverage(state: LearningState): string {
+  const lines = [
+    "# Observation Coverage",
+    "",
+    "Screen activity is sampled, not continuous. Missing periods are uncertainty, not implied activity.",
+    "",
+  ];
+  for (const gap of state.gaps.slice(-12)) {
+    lines.push(
+      "Unknown gap: " + new Date(gap.startMs).toISOString() + " -> " + new Date(gap.endMs).toISOString(),
+      "Reason: " + gap.reason,
+      "",
+    );
+  }
+  return lines.join("\n");
+}
+
 function renderImprovements(state: LearningState): string {
   const lines = [
     "# Possible Improvements",
@@ -802,6 +819,7 @@ export class PersonalLearningService {
       renderProgress(this.state),
       renderCorrections(this.state),
       renderUnknowns(this.state),
+      renderCoverage(this.state),
       renderImprovements(this.state),
     ].join("\n\n").trim();
     if (!context) return undefined;
