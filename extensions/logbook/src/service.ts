@@ -96,6 +96,7 @@ export class LogbookService {
       fullConfig: OpenClawConfig;
       logger: PluginLogger;
       dataDir: string;
+      learningDataDir?: string;
       workerModuleUrl: URL;
       scheduler: PluginServiceSchedulerV1;
     },
@@ -110,7 +111,7 @@ export class LogbookService {
       this.store = store;
       try {
         this.learning = new PersonalLearningService(this.config, {
-          dataDir: this.deps.dataDir,
+          dataDir: this.deps.learningDataDir ?? path.join(this.deps.dataDir, "learning"),
           runtime: this.deps.runtime,
           logger: this.deps.logger,
         });
