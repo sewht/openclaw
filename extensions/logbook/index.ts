@@ -14,12 +14,6 @@ import {
 import { resolveLogbookConfig } from "./src/config.js";
 import { dayKeyFor } from "./src/day.js";
 import { LogbookService } from "./src/service.js";
-import {
-  explicitlyRequestedExternalAccess,
-  isExternalTool,
-  isLikelyNetworkCommand,
-} from "./src/learning-policy.js";
-
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const logbookConfigSchema = {
@@ -45,7 +39,6 @@ function readNumberParam(params: unknown, key: string): number {
   return value;
 }
 
-const learningExternalAccessByRun = new Map<string, boolean>();
 
 const logbookNodeHostCommands: OpenClawPluginNodeHostCommand[] = [
   {
@@ -208,59 +201,17 @@ export default definePluginEntry({
     const registerWrite = (method: string, run: (params: unknown) => unknown) =>
       api.registerGatewayMethod(method, handle(run), { scope: "operator.write" });
 
-    // Learning mode is deliberately narrower than normal operator mode:
-    // only explicit user-originated runs are admitted; scheduled/heartbeat runs are blocked.
-    const learningEnabled = config.learningEnabled;
-    api.on("before_agent_run", async (_event, ctx) => {
-      if (!learningEnabled) return;
-      if (ctx.trigger && ctx.trigger !== "user") {
-        return {
-          outcome: "block" as const,
-          reason: "learning_stage_disallows_autonomous_runs",
-          message: "Learning stage admits only an explicit user-triggered run.",
-          category: "learning_stage",
-        };
-      }
-    });
-
-    api.on("before_prompt_build", async (event, ctx) => {
-      if (learningEnabled && ctx.runId) {
-        learningExternalAccessByRun.set(
-          ctx.runId,
-          explicitlyRequestedExternalAccess(event.currentUserMessage ?? event.prompt ?? ""),
-        );
-      }
+    // Learning observes OpenClaw sessions; it does not replace OpenClaw's native
+    // tool policy, sandbox, approval, or permission model. Learning capability and
+    // execution authority are intentionally separate.
+    api.on("before_prompt_build", async (_event, _ctx) => {
       const context = service?.learningContext();
       return context ? { appendSystemContext: context } : undefined;
     });
 
-    api.on(
-      "before_tool_call",
-      async (event, ctx) => {
-        if (!learningEnabled) return;
-        const allowed = ctx.runId ? learningExternalAccessByRun.get(ctx.runId) === true : false;
-        if (isExternalTool(event.toolName) && !allowed) {
-          return {
-            block: true,
-            blockReason:
-              "External web/browser access is blocked in learning stage unless the current user request explicitly asks for it.",
-          };
-        }
-        if (isLikelyNetworkCommand(event.toolName, event.params) && !allowed) {
-          return {
-            block: true,
-            blockReason:
-              "Likely network access through a shell/process command is blocked in learning stage unless the current user request explicitly asks for external access.",
-          };
-        }
-      },
-      { priority: 100 },
-    );
-
     // Learning is observational only: it can read logbook evidence and finished agent turns,
     // but it does not register or invoke task-execution tools.
-    api.on("agent_end", async (event, ctx) => {
-      if (ctx.runId) learningExternalAccessByRun.delete(ctx.runId);
+    api.on("agent_end", async (event, _ctx) => {
       try {
         await service?.recordAgentTurn(event.messages);
       } catch (error) {
