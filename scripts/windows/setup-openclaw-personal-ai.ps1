@@ -229,7 +229,7 @@ Invoke-OpenClaw @("config", "set", "plugins.entries.logbook.config.learningInter
 Invoke-OpenClaw @("config", "set", "plugins.entries.logbook.config.learningRawEvidenceRetentionDays", "7")
 
 # The branch's Logbook integration uses the bundled Codex structured image path.
-Invoke-OpenClaw @("config", "set", "plugins.entries.logbook.config.visionModel", "codex/gpt-6-astra")
+Invoke-OpenClaw @("config", "set", "plugins.entries.logbook.config.visionModel", "openai/gpt-6-astra")
 
 Write-Step "Verify configuration and Gateway"
 Invoke-OpenClaw @("config", "validate")
