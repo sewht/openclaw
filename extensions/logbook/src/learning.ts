@@ -426,8 +426,10 @@ function mergeLearningState(previous: LearningState, incoming: LearningState): L
 
 function redact(value: string): string {
   return value
-    .replace(/sk-[A-Za-z0-9_-]{16,}/g, "[REDACTED_SECRET]")
-    .replace(/ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}/g, "[REDACTED_TOKEN]")
+    .replace(/sk-[A-Za-z0-9_-]{16,}|sk_(?:live|test)_[A-Za-z0-9]{12,}/g, "[REDACTED_SECRET]")
+    .replace(/ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}/g, "[REDACTED_TOKEN]")
+    .replace(/xox[baprs]-[A-Za-z0-9-]{16,}/g, "[REDACTED_TOKEN]")
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[REDACTED_TOKEN]")
     .replace(/Bearer\s+[A-Za-z0-9._-]{20,}/gi, "Bearer [REDACTED_TOKEN]")
     .replace(/password\s*[:=]\s*[^\s,;]+/gi, "password=[REDACTED]");
 }
@@ -453,7 +455,15 @@ function flatten(value: unknown, output: string[] = []): string[] {
 
 function agentText(messages: unknown[]): string {
   const chunks: string[] = [];
-  for (const message of messages.slice(-12)) {
+  for (const message of messages.slice(-20)) {
+    const row =
+      message && typeof message === "object"
+        ? (message as Record<string, unknown>)
+        : undefined;
+    const role = typeof row?.role === "string" ? row.role.toLowerCase() : "";
+    // Never learn preferences from the assistant's own generated prose or system messages.
+    // User messages and tool results remain evidence and are still treated as untrusted data.
+    if (role === "assistant" || role === "system" || role === "developer") continue;
     const part = flatten(message).join(" ").trim();
     if (part) chunks.push(part.slice(0, 2000));
   }
