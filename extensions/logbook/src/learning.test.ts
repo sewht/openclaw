@@ -47,7 +47,7 @@ describe("PersonalLearningService state safety", () => {
     const state = JSON.parse(await readFile(path.join(dataDir, "state.json"), "utf8")) as {
       schemaVersion: number; profile: Array<{ preference: string }>; workflows: Array<{ executionStatus: string }>; improvements: Array<{ status: string }>; gaps: Array<{ startMs: number; endMs: number }>; coverage: unknown[]; unknowns: Array<{ topic: string }>;
     };
-    expect(state.schemaVersion).toBe(2);
+    expect(state.schemaVersion).toBe(3);
     expect(state.profile).toHaveLength(1);
     expect(state.profile[0].preference).toBe("Prefer compact answers");
     expect(state.workflows[0].executionStatus).toBe("observe_only");
