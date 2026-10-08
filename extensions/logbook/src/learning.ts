@@ -817,9 +817,13 @@ export class PersonalLearningService {
         await writeFile(this.agentEvidencePath, "", { mode: 0o600 });
         return;
       }
-      await this.applyEvidence(evidence, "agent_review");
-      this.lastAgentReviewAt = now;
-      await writeFile(this.agentEvidencePath, "", { mode: 0o600 });
+      const persisted = await this.applyEvidence(evidence, "agent_review");
+      if (persisted) {
+        this.lastAgentReviewAt = now;
+        await writeFile(this.agentEvidencePath, "", { mode: 0o600 });
+      } else {
+        this.deps.logger.warn("logbook learning: keeping raw agent evidence because persistence failed");
+      }
     } finally {
       this.reviewRunning = false;
     }
@@ -872,8 +876,8 @@ export class PersonalLearningService {
     evidence: Evidence[],
     reason: "screen_window" | "agent_review",
     finalize?: (state: LearningState) => void,
-  ): Promise<void> {
-    const work = async () => {
+  ): Promise<boolean> {
+    const work = async (): Promise<boolean> => {
       try {
         const result = await this.deps.runtime.llm.complete({
           messages: [{ role: "user", content: learningPrompt(this.state, evidence, reason) }],
@@ -883,14 +887,21 @@ export class PersonalLearningService {
         const parsed = jsonObject(result.text);
         if (!parsed) {
           this.deps.logger.warn("logbook learning: model returned non-JSON output");
-          return;
+        } else {
+          const incoming = normalize(parsed);
+          this.state = mergeLearningState(this.state, incoming);
         }
-        const incoming = normalize(parsed);
-        this.state = mergeLearningState(this.state, incoming);
-        finalize?.(this.state);
-        await this.persist();
       } catch (error) {
         this.deps.logger.warn("logbook learning: review failed: " + String(error));
+      }
+
+      try {
+        finalize?.(this.state);
+        await this.persist();
+        return true;
+      } catch (error) {
+        this.deps.logger.warn("logbook learning: persistence failed: " + String(error));
+        return false;
       }
     };
     const next = this.mutationChain.then(work, work);
@@ -898,7 +909,7 @@ export class PersonalLearningService {
       () => undefined,
       () => undefined,
     );
-    await next;
+    return await next;
   }
 
   private async persist(): Promise<void> {
